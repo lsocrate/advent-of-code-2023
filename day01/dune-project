@@ -1,0 +1,20 @@
+(lang dune 3.12)
+
+(name day01)
+
+(generate_opam_files true)
+
+(source
+ (github username/reponame))
+
+(authors "Luiz Socrate")
+
+(package
+ (name day01)
+ (synopsis "A short synopsis")
+ (description "A longer description")
+ (depends ocaml dune)
+ (tags
+   (topics "to describe" your project)
+ )
+)
