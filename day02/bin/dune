@@ -3,3 +3,7 @@
  (name main)
  (libraries day02)
  (preprocess (pps ppx_deriving.show)))
+
+(env
+  (dev
+    (flags (:standard -warn-error -A))))

@@ -6,13 +6,14 @@ type game = {
   mutable max_green : int;
   mutable max_blue : int;
 }
-(*[@@deriving show]*)
+[@@deriving show]
+
+let game_init id = { id; max_red = 0; max_green = 0; max_blue = 0 }
 
 let parts_of_line line =
-  let[@warning "-8"] (id_side :: draw_side :: _) =
-    String.split_on_char ':' line
-  in
-  (id_side, draw_side)
+  match String.split_on_char ':' line with
+  | id_side :: draw_side :: _ -> (id_side, draw_side)
+  | _ -> failwith "bad line"
 
 let tail_at n str = String.sub str n @@ (String.length str - n)
 let id_of_draw str_left = int_of_string @@ tail_at 5 str_left
@@ -34,11 +35,11 @@ let rgb_of_draw draw =
 let is_game_possible (r, g, b) game =
   game.max_red <= r && game.max_green <= g && game.max_blue <= b
 
+let game_power game = game.max_red * game.max_green * game.max_blue
+
 let to_game line =
   let id_side, draw_side = parts_of_line line in
-  let game : game =
-    { id = id_of_draw id_side; max_red = 0; max_green = 0; max_blue = 0 }
-  in
+  let game : game = game_init @@ id_of_draw id_side in
   draw_side |> String.split_on_char ';'
   |> List.fold_left
        (fun game draw ->
@@ -50,7 +51,27 @@ let to_game line =
        game
 
 let () =
-  open_in "./puzzle.input" |> input_lines |> List.map to_game
-  |> List.filter (is_game_possible (12, 13, 14))
-  |> List.fold_left (fun t g -> t + g.id) 0
-  |> string_of_int |> print_endline
+  let input =
+    match Sys.argv.(1) with
+    | "test" -> "./test.input"
+    | "puzzle" -> "./puzzle.input"
+    | _ -> failwith "Invalid input file"
+  in
+  let lines = open_in input |> input_lines in
+  let challenge1 l =
+    l |> List.map to_game
+    |> List.filter (is_game_possible (12, 13, 14))
+    |> List.fold_left (fun t g -> t + g.id) 0
+    |> string_of_int |> print_endline
+  in
+  let challenge2 l =
+    l |> List.map to_game |> List.map game_power |> List.fold_left ( + ) 0
+    |> string_of_int |> print_endline
+  in
+  let target_challenge =
+    match Sys.argv.(2) with
+    | "easy" -> challenge1
+    | "hard" -> challenge2
+    | _ -> failwith "Choose level"
+  in
+  target_challenge lines
