@@ -37,18 +37,27 @@ let is_game_possible (r, g, b) game =
 
 let game_power game = game.max_red * game.max_green * game.max_blue
 
+let consolidate_draws game draw =
+  let r, g, b = rgb_of_draw draw in
+  game.max_red <- max game.max_red r;
+  game.max_green <- max game.max_green g;
+  game.max_blue <- max game.max_blue b;
+  game
+
 let to_game line =
   let id_side, draw_side = parts_of_line line in
   let game : game = game_init @@ id_of_draw id_side in
-  draw_side |> String.split_on_char ';'
-  |> List.fold_left
-       (fun game draw ->
-         let r, g, b = rgb_of_draw draw in
-         game.max_red <- max game.max_red r;
-         game.max_blue <- max game.max_blue b;
-         game.max_green <- max game.max_green g;
-         game)
-       game
+  draw_side |> String.split_on_char ';' |> List.fold_left consolidate_draws game
+
+let challenge1 lines =
+  lines |> List.map to_game
+  |> List.filter (is_game_possible (12, 13, 14))
+  |> List.fold_left (fun t g -> t + g.id) 0
+  |> string_of_int |> print_endline
+
+let challenge2 lines =
+  lines |> List.map to_game |> List.map game_power |> List.fold_left ( + ) 0
+  |> string_of_int |> print_endline
 
 let () =
   let input =
@@ -57,21 +66,10 @@ let () =
     | "puzzle" -> "./puzzle.input"
     | _ -> failwith "Invalid input file"
   in
-  let lines = open_in input |> input_lines in
-  let challenge1 l =
-    l |> List.map to_game
-    |> List.filter (is_game_possible (12, 13, 14))
-    |> List.fold_left (fun t g -> t + g.id) 0
-    |> string_of_int |> print_endline
-  in
-  let challenge2 l =
-    l |> List.map to_game |> List.map game_power |> List.fold_left ( + ) 0
-    |> string_of_int |> print_endline
-  in
   let target_challenge =
     match Sys.argv.(2) with
     | "easy" -> challenge1
     | "hard" -> challenge2
     | _ -> failwith "Choose level"
   in
-  target_challenge lines
+  open_in input |> input_lines |> target_challenge
