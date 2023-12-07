@@ -1,9 +1,20 @@
+open Fun
+
 (* SCHEMA *)
 type schema = { input : string; width : int }
 
 (* POSITION *)
 (* x,y where left top = 0,0 *)
 type position = Position of int * int [@@deriving show]
+
+module Position = struct
+  type t = position
+
+  let compare = compare
+end
+
+module PositionMap = Map.Make (Position)
+module PositionSet = Set.Make (Position)
 
 let schema_init input = { input; width = String.index input '\n' }
 
@@ -31,53 +42,59 @@ let positions_around center =
 
 (* NUMBERS *)
 
-type number = Connected of int | Disconnected of int [@@deriving show]
+type number = Connected of int * PositionSet.t | Disconnected of int
 
 let number_init schema (pos : position) n =
-  let is_connection a =
-    match a with '0' .. '9' | '.' | '\n' -> false | _ -> true
-  in
-  let is_connected =
+  let gs, ngs =
     positions_around pos
-    |> List.map (char_in_schema schema)
-    |> List.exists (fun c ->
-           c |> Option.map is_connection |> Option.value ~default:false)
+    |> List.fold_left
+         (fun cs p ->
+           match (char_in_schema schema p, cs) with
+           | None, _ -> cs
+           | Some ('0' .. '9' | '.' | '\n'), _ -> cs
+           | Some '*', (gs, ngs) -> (PositionSet.add p gs, ngs)
+           | Some _, (gs, ngs) -> (gs, PositionSet.add p ngs))
+         (PositionSet.empty, PositionSet.empty)
   in
-
-  if is_connected then Connected n else Disconnected n
+  if PositionSet.is_empty gs && PositionSet.is_empty ngs then Disconnected n
+  else Connected (n, gs)
 
 (* GROUP *)
-type group =
-  | OpenPart of int
-  | OpenNotPart of int
-  | ClosedPart of int
-  | ClosedNotPart of int
-[@@deriving show]
+type group = {
+  mutable value : int;
+  mutable is_open : bool;
+  mutable is_part : bool;
+  mutable touches : PositionSet.t;
+}
 
 let group_init = function
-  | Connected n -> OpenPart n
-  | Disconnected n -> OpenNotPart n
-
-let is_group_open = function
-  | OpenPart _ -> true
-  | OpenNotPart _ -> true
-  | _ -> false
+  | Disconnected n ->
+      {
+        value = n;
+        is_open = true;
+        is_part = false;
+        touches = PositionSet.empty;
+      }
+  | Connected (n, gs) ->
+      { value = n; is_open = true; is_part = true; touches = gs }
 
 let close_group g =
-  match g with
-  | OpenPart n -> ClosedPart n
-  | OpenNotPart n -> ClosedNotPart n
-  | _ -> g
+  g.is_open <- false;
+  g
 
 let push_number_into_group group number =
   let push g n = (g * 10) + n in
-  match (group, number) with
-  | ClosedPart _, _ -> failwith "adding to closed group"
-  | ClosedNotPart _, _ -> failwith "adding to closed group"
-  | OpenNotPart g, Disconnected n -> OpenNotPart (push g n)
-  | OpenNotPart g, Connected n -> OpenPart (push g n)
-  | OpenPart g, Connected n -> OpenPart (push g n)
-  | OpenPart g, Disconnected n -> OpenPart (push g n)
+  if not group.is_open then failwith "adding to closed group"
+  else
+    match number with
+    | Disconnected n ->
+        group.value <- push group.value n;
+        group
+    | Connected (n, gs) ->
+        group.value <- push group.value n;
+        group.is_part <- true;
+        group.touches <- PositionSet.union gs group.touches;
+        group
 
 let rec process input res idx =
   let schema = schema_init input in
@@ -94,7 +111,7 @@ let rec process input res idx =
             match res with
             | [] -> [ group_init n ]
             | prev :: rest ->
-                if is_group_open prev then push_number_into_group prev n :: rest
+                if prev.is_open then push_number_into_group prev n :: rest
                 else group_init n :: prev :: rest)
         | _ -> (
             match res with prev :: rest -> close_group prev :: rest | _ -> res)
@@ -102,11 +119,24 @@ let rec process input res idx =
       process input res (idx + 1)
 
 let challenge1 input =
-  let sum_parts t g = match g with ClosedPart n -> t + n | _ -> t in
+  let sum_parts t g = if g.is_part then t + g.value else t in
   process input [] 0 |> List.fold_left sum_parts 0 |> string_of_int
   |> print_endline
 
-let challenge2 _schema = ()
+let challenge2 input =
+  let cons n = function None -> Some [ n ] | Some ns -> Some (n :: ns) in
+  let into_map_of_gears gm g =
+    if not g.is_part then gm
+    else PositionSet.fold (flip PositionMap.update (cons g.value)) g.touches gm
+  in
+  let sum_positions_with_two_numbers_with_multiples _ = function
+    | [ x; y ] -> ( + ) (x * y)
+    | _ -> id
+  in
+  process input [] 0
+  |> List.fold_left into_map_of_gears PositionMap.empty
+  |> flip (PositionMap.fold sum_positions_with_two_numbers_with_multiples) 0
+  |> string_of_int |> print_endline
 
 let () =
   let input =
