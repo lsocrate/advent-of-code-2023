@@ -101,5 +101,29 @@ let challenge1 input =
            List.fold_left (to_lower_location i) (soil_of_seed i first) rest)
   |> string_of_int |> print_endline
 
-let challenge2 _ = print_endline "not yet"
+let unwrapped_seed_sequence_of_seeds = function
+  | seed :: count :: rest ->
+      let aux (s, c, r) =
+        if c > 1 then Some (s, (s + 1, c - 1, r))
+        else if c == 1 then
+          match r with
+          | new_seed :: new_count :: new_rest ->
+              Some (s, (new_seed, new_count, new_rest))
+          | _ -> None
+        else None
+      in
+      Seq.unfold aux (seed, count, rest)
+  | _ -> failwith "Bad seeds"
+
+let challenge2 input =
+  let to_lower_location i lower_location s =
+    min lower_location (soil_of_seed i s)
+  in
+  Str.split (Str.regexp_string "\n\n") input
+  |> to_instructions [] Fun.id Fun.id Fun.id Fun.id Fun.id Fun.id Fun.id
+  |> (fun i ->
+       Seq.fold_left (to_lower_location i) 999999999999999999
+         (unwrapped_seed_sequence_of_seeds i.seeds))
+  |> string_of_int |> print_endline
+
 let () = Challenge.run_challenge { easy = challenge1; hard = challenge2 }
