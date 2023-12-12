@@ -1,0 +1,9 @@
+(executable
+ (public_name day05)
+ (name main)
+ (libraries day05 str)
+ (preprocess (pps ppx_deriving.show)))
+
+(env
+  (dev
+    (flags (:standard -warn-error -A))))
