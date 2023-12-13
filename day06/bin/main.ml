@@ -16,6 +16,26 @@ let parts input =
         (numbers_of_line distances_line)
   | _ -> failwith "nope"
 
+let parts_hard input =
+  let to_race time distance = { time; distance } in
+  let join_numbers ns =
+    List.fold_left
+      (fun j n ->
+        let nf = float_of_int n in
+        let digits = Float.ceil @@ log10 nf in
+        nf +. (j *. Float.pow 10. digits))
+      0. ns
+    |> int_of_float
+  in
+  match String.split_on_char '\n' input with
+  | times_line :: distances_line :: _ ->
+      [
+        to_race
+          (join_numbers @@ numbers_of_line times_line)
+          (join_numbers @@ numbers_of_line distances_line);
+      ]
+  | _ -> failwith "nope"
+
 let min_max_hold_time r =
   let goal_d = r.distance + 1 in
   (* -h2 + (r.time * h) - goal_d = 0 *)
@@ -33,8 +53,10 @@ let ways_to_beat (min, max) = max - min + 1
 let challenge1 input =
   parts input |> List.map min_max_hold_time
   |> List.fold_left (fun t rmm -> t * ways_to_beat rmm) 1
-  |> string_of_int |> print_endline
+  |> Format.printf "res: %d\n"
 
-let challenge2 _ = print_endline "not there yet"
+let challenge2 input =
+  parts_hard input |> List.hd |> min_max_hold_time |> ways_to_beat
+  |> Format.printf "res: %d\n"
 
 let () = Challenge.run_challenge { easy = challenge1; hard = challenge2 }
