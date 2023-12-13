@@ -42,10 +42,7 @@ let min_max_hold_time r =
   let a = -1. in
   let b = float_of_int r.time in
   let c = -1. *. float_of_int goal_d in
-  let delta = sqrt (Float.pow b 2. -. (4. *. a *. c)) in
-  let x1 = (-.b +. delta) /. (2. *. a) in
-  let x2 = (-.b -. delta) /. (2. *. a) in
-  let min, max = if x1 < x2 then (x1, x2) else (x2, x1) in
+  let min, max = solve_quadratic a b c in
   (int_of_float @@ Float.ceil min, int_of_float @@ Float.floor max)
 
 let ways_to_beat (min, max) = max - min + 1
