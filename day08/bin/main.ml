@@ -29,13 +29,26 @@ let instructions_and_nodes = function
 let rec find_zzz nodes inst sc = function
   | "ZZZ" -> sc
   | current ->
-      let node = NodeMap.find current nodes in
-      let nxt_lbl = step inst sc node in
+      let nxt_lbl = step inst sc (NodeMap.find current nodes) in
       find_zzz nodes inst (sc + 1) nxt_lbl
+
+let rec find_final_z nodes inst sc lbl =
+  if String.ends_with ~suffix:"Z" lbl then sc
+  else
+    let nxt_lbl = step inst sc (NodeMap.find lbl nodes) in
+    find_final_z nodes inst (sc + 1) nxt_lbl
 
 let challenge1 lines =
   let instructions, nodes = instructions_and_nodes lines in
   find_zzz nodes instructions 0 "AAA" |> string_of_int |> print_endline
 
-let challenge2 input = print_endline "No yet"
+let challenge2 lines =
+  let instructions, nodes = instructions_and_nodes lines in
+  NodeMap.to_list nodes
+  |> List.filter_map (fun (l, _) ->
+         if String.ends_with ~suffix:"A" l then Some l else None)
+  |> List.map (find_final_z nodes instructions 0)
+  |> List.fold_left Utils.least_common_multiple 1
+  |> string_of_int |> print_endline
+
 let () = Challenge.run_challenge { easy = challenge1; hard = challenge2 }
